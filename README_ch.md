@@ -5,29 +5,24 @@
 
 ## 目录结构
 
-### 安装布局
 ```
-~/Scripts/env_check/                 # 安装目录
-├── check_env_new.sh                # 主环境检查脚本
+mac_env_check/                      # 项目根目录
+├── check_env_new.sh                # 主检查脚本
 ├── check_history.sh                # 历史记录管理工具
 ├── scheduled_check.sh              # 自动检查调度器
-└── modules/                        # 核心模块
-    ├── config.sh                   # 配置设置
-    ├── language.sh                 # 语言本地化
-    ├── logger.sh                   # 日志工具
-    ├── checks.sh                   # 系统检查实现
-    ├── reporter.sh                 # 报告生成
-    └── analyzer.sh                 # 分析功能
-```
-
-### 历史存储
-```
-~/.env_check_history/               # 历史存储
-├── scheduled_check.log             # 定期检查日志
-├── active_checks/                  # 最近检查结果
-│   └── mac_env_check_YYYYMMDD/    # 检查结果目录
-└── archives/                       # 压缩的旧结果
-    └── mac_env_check_YYYYMMDD.tar.gz
+├── modules/                        # 核心模块
+│   ├── config.sh                   # 配置设置
+│   ├── language.sh                 # 语言本地化
+│   ├── logger.sh                   # 日志工具
+│   ├── checks.sh                   # 系统检查实现
+│   ├── reporter.sh                 # 报告生成
+│   └── analyzer.sh                 # 分析功能
+└── .env_check_history/            # 历史记录存储（自动生成）
+    ├── scheduled_check.log         # 定期检查日志
+    ├── active_checks/             # 最近检查结果
+    │   └── mac_env_check_YYYYMMDD/ # 检查结果目录
+    └── archives/                  # 压缩的旧结果
+        └── mac_env_check_YYYYMMDD.tar.gz
 ```
 
 ## 主要功能
@@ -91,33 +86,24 @@
 - 组件状态概览
 - 性能指标追踪
 
-
 ## 安装说明
 
-1. 创建目录：
+1. 克隆仓库：
 ```bash
-# 创建脚本目录
-mkdir -p ~/Scripts/env_check
-
-# 创建历史记录和配置目录
-mkdir -p ~/.env_check_history/{active_checks,archives}
-mkdir -p ~/.env_check_config
-```
-
-2. 克隆和复制文件：
-```bash
-# 克隆仓库
 git clone https://github.com/yourusername/mac_env_check.git
 cd mac_env_check
-
-# 复制所有文件到脚本目录
-cp -r {check_env_new.sh,check_history.sh,scheduled_check.sh,modules} ~/Scripts/env_check/
 ```
 
-3. 设置权限：
+2. 设置目录结构：
 ```bash
-chmod +x ~/Scripts/env_check/*.sh
-chmod +x ~/Scripts/env_check/modules/*.sh
+# 创建历史记录目录
+mkdir -p .env_check_history/{active_checks,archives}
+```
+
+3. 设置执行权限：
+```bash
+chmod +x check_env_new.sh check_history.sh scheduled_check.sh
+chmod +x modules/*.sh
 ```
 
 4. 安装依赖：

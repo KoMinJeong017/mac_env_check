@@ -19,11 +19,13 @@
 #########################################################################
 #!/bin/bash
 
-# Import language module
+# Get project root and set history directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "${SCRIPT_DIR}/modules/language.sh"
+PROJECT_ROOT="$SCRIPT_DIR"
+HISTORY_DIR="${PROJECT_ROOT}/.env_check_history"
 
-HISTORY_DIR=~/.env_check_history
+# Import language module
+source "${SCRIPT_DIR}/modules/language.sh"
 
 echo "$(get_message "ENV_CHECK_SUMMARY")"
 echo "--------------------------------"
@@ -36,16 +38,37 @@ fi
 
 # Display archive statistics
 echo -e "\n$(get_message "ARCHIVED_REPORTS"):"
-find "$HISTORY_DIR" -name "mac_env_check_*" -type d -o -name "mac_env_check_*.tar.gz" | \
-    sort -r | \
-    while read -r file; do
-        if [ -d "$file" ]; then
+{
+    # Display active checks
+    if [ -d "$HISTORY_DIR/active_checks" ]; then
+        find "$HISTORY_DIR/active_checks" -maxdepth 1 -name "mac_env_check_*" -type d | \
+        sort -r | while read -r file; do
             echo "$(basename "$file") ($(get_message "ACTIVE"))"
-        else
-            echo "$(basename "$file") ($(get_message "ARCHIVED"))"
-        fi
-    done
+        done
+    fi
+
+    # Display archived checks
+    if [ -d "$HISTORY_DIR/archives" ]; then
+        find "$HISTORY_DIR/archives" -name "mac_env_check_*.tar.gz" | \
+        sort -r | while read -r file; do
+            echo "$(basename "$file" .tar.gz) ($(get_message "ARCHIVED"))"
+        done
+    fi
+} | head -n 10  # Only show last 10 records
 
 # Display storage usage
 echo -e "\n$(get_message "STORAGE_USAGE"):"
-du -sh "$HISTORY_DIR"
+if [ -d "$HISTORY_DIR" ]; then
+    for dir in active_checks archives; do
+        if [ -d "$HISTORY_DIR/$dir" ]; then
+            du -sh "$HISTORY_DIR/$dir" 2>/dev/null || echo "0B $HISTORY_DIR/$dir"
+        fi
+    done
+fi
+
+# Display total statistics
+echo -e "\n$(get_message "TOTAL_STATISTICS"):"
+active_count=$(find "$HISTORY_DIR/active_checks" -maxdepth 1 -name "mac_env_check_*" -type d 2>/dev/null | wc -l | tr -d ' ')
+archive_count=$(find "$HISTORY_DIR/archives" -name "mac_env_check_*.tar.gz" 2>/dev/null | wc -l | tr -d ' ')
+echo "$(get_message "ACTIVE_CHECKS"): $active_count"
+echo "$(get_message "ARCHIVED_CHECKS"): $archive_count"

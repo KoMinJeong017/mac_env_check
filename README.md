@@ -5,29 +5,24 @@ This tool provides comprehensive environment checking and analysis for MacOS dev
 
 ## Directory Structure
 
-### Installation Layout
 ```
-~/Scripts/env_check/                 # Installation directory
-├── check_env_new.sh                # Main environment check script
+mac_env_check/                      # Project root
+├── check_env_new.sh                # Main check script
 ├── check_history.sh                # History management utility
 ├── scheduled_check.sh              # Automated check scheduler
-└── modules/                        # Core modules
-    ├── config.sh                   # Configuration settings
-    ├── language.sh                 # Language localization
-    ├── logger.sh                   # Logging utilities
-    ├── checks.sh                   # System check implementations
-    ├── reporter.sh                 # Report generation
-    └── analyzer.sh                 # Analysis functions
-```
-
-### History Storage
-```
-~/.env_check_history/               # History storage
-├── scheduled_check.log             # Scheduled checks log
-├── active_checks/                  # Recent check results
-│   └── mac_env_check_YYYYMMDD/    # Check result directories
-└── archives/                       # Compressed old results
-    └── mac_env_check_YYYYMMDD.tar.gz
+├── modules/                        # Core modules
+│   ├── config.sh                   # Configuration settings
+│   ├── language.sh                 # Language localization
+│   ├── logger.sh                   # Logging utilities
+│   ├── checks.sh                   # System check implementations
+│   ├── reporter.sh                 # Report generation
+│   └── analyzer.sh                 # Analysis functions
+└── .env_check_history/            # History storage (auto-generated)
+    ├── scheduled_check.log         # Scheduled checks log
+    ├── active_checks/             # Recent check results
+    │   └── mac_env_check_YYYYMMDD/ # Check result directories
+    └── archives/                  # Compressed old results
+        └── mac_env_check_YYYYMMDD.tar.gz
 ```
 
 ## Features
@@ -91,32 +86,24 @@ This tool provides comprehensive environment checking and analysis for MacOS dev
 - Component status overview
 - Performance metrics tracking
 
-## Installation
+# Installation
 
-1. Set up directories:
+1. Clone the repository:
 ```bash
-# Create script directory
-mkdir -p ~/Scripts/env_check
-
-# Create history and config directories
-mkdir -p ~/.env_check_history/{active_checks,archives}
-mkdir -p ~/.env_check_config
-```
-
-2. Clone and copy files:
-```bash
-# Clone repository
 git clone https://github.com/yourusername/mac_env_check.git
 cd mac_env_check
-
-# Copy all files to script directory
-cp -r {check_env_new.sh,check_history.sh,scheduled_check.sh,modules} ~/Scripts/env_check/
 ```
 
-3. Set permissions:
+2. Set up the directory structure:
 ```bash
-chmod +x ~/Scripts/env_check/*.sh
-chmod +x ~/Scripts/env_check/modules/*.sh
+# Create history directories
+mkdir -p .env_check_history/{active_checks,archives}
+```
+
+3. Set execution permissions:
+```bash
+chmod +x check_env_new.sh check_history.sh scheduled_check.sh
+chmod +x modules/*.sh
 ```
 
 4. Install dependencies:

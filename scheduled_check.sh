@@ -19,20 +19,24 @@
 #########################################################################
 #!/bin/bash
 
-#!/bin/bash
+# Get project root and set history directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$SCRIPT_DIR"
+HISTORY_DIR="${PROJECT_ROOT}/.env_check_history"
 
-# 设置日志文件
-LOG_FILE=~/.env_check_history/scheduled_check.log
+# Set log file
+LOG_FILE="${HISTORY_DIR}/scheduled_check.log"
 
-# 记录运行时间
+# Ensure history directory exists
+mkdir -p "${HISTORY_DIR}"
+
+# Record run time
 echo "Running scheduled check at $(date)" >> "$LOG_FILE"
 
-# 切换到脚本目录
-cd ~/Scripts/env_check
-
-# 运行环境检查，保留90天的历史记录
+# Run environment check with 90-day retention
+cd "$SCRIPT_DIR"
 ./check_env_new.sh -k 90
 
-# 记录完成状态
+# Record completion status
 echo "Check completed at $(date)" >> "$LOG_FILE"
 echo "----------------------------------------" >> "$LOG_FILE"

@@ -24,3 +24,4 @@ env_check_*/
 *.swp
 *.swo
 *~
+.env_check_history/

@@ -68,13 +68,20 @@ EOF
 
 # Initialize configuration
 init_config() {
+    # Get project root directory
+    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    
+    # Set history directory in project root
+    HISTORY_DIR="${PROJECT_ROOT}/.env_check_history"
+    
     TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-    OUTPUT_DIR="${NAME_PREFIX}_${TIMESTAMP}${NAME_SUFFIX:+_$NAME_SUFFIX}"
-
+    OUTPUT_DIR="${HISTORY_DIR}/active_checks/${NAME_PREFIX}_${TIMESTAMP}${NAME_SUFFIX:+_$NAME_SUFFIX}"
+    
     # Define directory structure
     mkdir -p "${OUTPUT_DIR}/logs"
     mkdir -p "${OUTPUT_DIR}/analysis"
-
+    mkdir -p "${HISTORY_DIR}/archives"
+    
     # Define log files
     SYSTEM_LOG="${OUTPUT_DIR}/logs/01_system_info.log"
     SHELL_LOG="${OUTPUT_DIR}/logs/02_shell_env.log"
@@ -99,22 +106,6 @@ init_config() {
     TRENDS_MD="${OUTPUT_DIR}/analysis/trends.md"
     SUMMARY_TXT="${OUTPUT_DIR}/summary.txt"
     INDEX_HTML="${OUTPUT_DIR}/index.html"
-
-    # Initialize all log files
-    for log_file in \
-        "$SYSTEM_LOG" "$SHELL_LOG" "$PATH_LOG" "$HOMEBREW_LOG" \
-        "$TOOLS_LOG" "$PYTHON_LOG" "$NODE_LOG" "$EDITOR_LOG" \
-        "$GIT_LOG" "$DISK_LOG" "$NETWORK_LOG" "$SECURITY_LOG" \
-        "$DEPS_LOG" "$CONFLICTS_LOG" "$PERFORMANCE_LOG" "$ERROR_LOG"; do
-        touch "$log_file"
-    done
-
-    # Initialize analysis files
-    touch "$ANALYSIS_REPORT" "$STATISTICS_JSON" "$TRENDS_MD" "$SUMMARY_TXT" "$INDEX_HTML"
-    
-    # Output initial message in Chinese
-    echo "开始进行 MacBook 环境检查..."
-    echo "结果将保存在: ${OUTPUT_DIR}"
 }
 
 # Parse command line arguments
@@ -156,11 +147,11 @@ parse_arguments() {
 
 # Archive management
 archive_old_logs() {
-    local archive_dir="$HOME/.env_check_history"
-    mkdir -p "$archive_dir"
-
-    find "$HOME" -maxdepth 1 -name "${NAME_PREFIX}_*" -type d -mtime "+${KEEP_DAYS}" -exec mv {} "$archive_dir/" \;
-
+    local archive_dir="${HISTORY_DIR}/archives"
+    local active_dir="${HISTORY_DIR}/active_checks"
+    
+    find "$active_dir" -maxdepth 1 -name "${NAME_PREFIX}_*" -type d -mtime "+${KEEP_DAYS}" -exec mv {} "$archive_dir/" \;
+    
     cd "$archive_dir" || return
     for dir in ${NAME_PREFIX}_*; do
         if [ -d "$dir" ] && [ ! -f "$dir.tar.gz" ]; then
