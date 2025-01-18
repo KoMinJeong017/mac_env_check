@@ -26,6 +26,7 @@ source "${SCRIPT_DIR}/modules/logger.sh"
 source "${SCRIPT_DIR}/modules/checks.sh"
 source "${SCRIPT_DIR}/modules/reporter.sh"
 source "${SCRIPT_DIR}/modules/analyzer.sh"
+source "${SCRIPT_DIR}/modules/language.sh"
 
 # Script version
 VERSION="2.0.0"
@@ -55,7 +56,7 @@ parse_arguments() {
                 exit 0
                 ;;
             *)
-                echo "Unknown option: $1"
+                echo "$(get_message "UNKNOWN_OPTION"): $1"
                 show_help
                 exit 1
                 ;;
@@ -65,18 +66,16 @@ parse_arguments() {
 
 # Help message
 show_help() {
-    cat << EOF
-MacOS Environment Check Tool v${VERSION}
-
-Usage: $(basename "$0") [OPTIONS]
-
-Options:
-  -n, --name PREFIX     Set custom prefix for log files
-  -s, --suffix SUFFIX   Set custom suffix for log files
-  -k, --keep DAYS      Keep logs for specified number of days (default: 30)
-  -a, --analyze-only   Only analyze existing logs without running checks
-  -h, --help           Show this help message
-EOF
+    echo "$(get_message "TOOL_TITLE") v${VERSION}"
+    echo
+    echo "$(get_message "USAGE"): $(basename "$0") [$(get_message "OPTIONS")]"
+    echo
+    echo "$(get_message "OPTIONS_TITLE"):"
+    echo "  -n, --name $(get_message "PREFIX")     $(get_message "HELP_PREFIX")"
+    echo "  -s, --suffix $(get_message "SUFFIX")   $(get_message "HELP_SUFFIX")"
+    echo "  -k, --keep $(get_message "DAYS")      $(get_message "HELP_KEEP")"
+    echo "  -a, --analyze-only   $(get_message "HELP_ANALYZE")"
+    echo "  -h, --help           $(get_message "HELP_HELP")"
 }
 
 # Main execution
@@ -85,13 +84,13 @@ main() {
     init_config
     setup_logging
 
-    echo "Starting MacBook environment check..."
-    echo "Results will be saved in: ${OUTPUT_DIR}"
+    echo "$(get_message "START_CHECK")"
+    echo "$(get_message "RESULTS_PATH"): ${OUTPUT_DIR}"
 
     if [ "$ANALYZE_ONLY" = true ]; then
-        echo "Analyzing existing logs..."
+        echo "$(get_message "ANALYZING_LOGS")"
         run_analysis
-        echo -e "${GREEN}Analysis completed!${NC}"
+        echo -e "${GREEN}$(get_message "ANALYSIS_COMPLETED")${NC}"
         exit 0
     fi
 
@@ -104,12 +103,12 @@ main() {
     # Archive old logs
     archive_old_logs
 
-    echo -e "\n${GREEN}Environment check completed!${NC}"
-    echo "Results are available in: ${OUTPUT_DIR}"
-    echo "View the report by opening: ${OUTPUT_DIR}/index.html"
+    echo -e "\n${GREEN}$(get_message "ENV_CHECK_COMPLETED")${NC}"
+    echo "$(get_message "RESULTS_AVAILABLE"): ${OUTPUT_DIR}"
+    echo "$(get_message "VIEW_REPORT"): ${OUTPUT_DIR}/index.html"
 
     if [ $FAILED_CHECKS -gt 0 ]; then
-        echo -e "\n${RED}Warning: $FAILED_CHECKS checks failed. Check the logs for details.${NC}"
+        echo -e "\n${RED}$(get_message "WARNING_CHECKS_FAILED") $FAILED_CHECKS $(get_message "CHECKS_FAILED_DETAILS")${NC}"
         exit 1
     fi
 }

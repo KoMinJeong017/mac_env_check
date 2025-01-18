@@ -3,16 +3,31 @@
 ## 概述
 这是一个用于MacOS开发环境的综合检查和分析工具。它采用模块化设计，可以帮助识别配置问题、分析依赖关系，并维护系统健康状况的历史记录。具有良好的可维护性和扩展性。
 
-## 工具结构
+## 目录结构
+
+### 安装布局
 ```
-mac_env_check/
-├── check_env_new.sh          # 主脚本
-└── modules/
-    ├── config.sh            # 配置模块
-    ├── logger.sh            # 日志工具
-    ├── checks.sh            # 系统检查实现
-    ├── reporter.sh          # 报告生成
-    └── analyzer.sh          # 分析功能
+~/Scripts/env_check/                 # 安装目录
+├── check_env_new.sh                # 主环境检查脚本
+├── check_history.sh                # 历史记录管理工具
+├── scheduled_check.sh              # 自动检查调度器
+└── modules/                        # 核心模块
+    ├── config.sh                   # 配置设置
+    ├── language.sh                 # 语言本地化
+    ├── logger.sh                   # 日志工具
+    ├── checks.sh                   # 系统检查实现
+    ├── reporter.sh                 # 报告生成
+    └── analyzer.sh                 # 分析功能
+```
+
+### 历史存储
+```
+~/.env_check_history/               # 历史存储
+├── scheduled_check.log             # 定期检查日志
+├── active_checks/                  # 最近检查结果
+│   └── mac_env_check_YYYYMMDD/    # 检查结果目录
+└── archives/                       # 压缩的旧结果
+    └── mac_env_check_YYYYMMDD.tar.gz
 ```
 
 ## 主要功能
@@ -40,7 +55,7 @@ mac_env_check/
 - 安全设置验证
 
 ### 4. 日志管理
-#### 输出目录结构
+#### 检查输出结构
 ```
 {前缀}_{时间戳}_{后缀}/
 ├── logs/
@@ -76,55 +91,89 @@ mac_env_check/
 - 组件状态概览
 - 性能指标追踪
 
+### 语言设置
+
+工具支持多语言输出，可以通过以下命令切换语言：
+
+```bash
+# 切换到中文输出
+~/Scripts/env_check/modules/language.sh
+source ~/Scripts/env_check/modules/language.sh
+set_language zh
+
+# 切换到英文输出
+source ~/Scripts/env_check/modules/language.sh
+set_language en
+
 ## 安装说明
 
-1. 设置目录结构：
+1. 创建目录：
 ```bash
 # 创建脚本目录
 mkdir -p ~/Scripts/env_check
 
-# 克隆代码仓库
+# 创建历史记录和配置目录
+mkdir -p ~/.env_check_history/{active_checks,archives}
+mkdir -p ~/.env_check_config
+```
+
+2. 克隆和复制文件：
+```bash
+# 克隆仓库
 git clone https://github.com/yourusername/mac_env_check.git
 cd mac_env_check
 
-# 复制文件到脚本目录
-cp -r {check_env_new.sh,modules} ~/Scripts/env_check/
-
-# 创建历史记录目录
-mkdir -p ~/.env_check_history
+# 复制所有文件到脚本目录
+cp -r {check_env_new.sh,check_history.sh,scheduled_check.sh,modules} ~/Scripts/env_check/
 ```
 
-2. 设置执行权限：
+3. 设置权限：
 ```bash
-chmod +x ~/Scripts/env_check/check_env_new.sh
+chmod +x ~/Scripts/env_check/*.sh
 chmod +x ~/Scripts/env_check/modules/*.sh
 ```
 
-3. 设置定期检查（可选）：
+4. 安装依赖：
 ```bash
-# 保存定期检查脚本
-cat > ~/Scripts/env_check/scheduled_check.sh << 'EOF'
-#!/bin/bash
-LOG_FILE=~/.env_check_history/scheduled_check.log
-echo "开始执行定期检查：$(date)" >> "$LOG_FILE"
-cd ~/Scripts/env_check
-./check_env_new.sh -k 90
-echo "检查完成时间：$(date)" >> "$LOG_FILE"
-echo "----------------------------------------" >> "$LOG_FILE"
-EOF
-
-# 设置执行权限
-chmod +x ~/Scripts/env_check/scheduled_check.sh
-
-# 添加到 crontab（每月1日早上9点运行）
-(crontab -l 2>/dev/null; echo "0 9 1 * * ~/Scripts/env_check/scheduled_check.sh") | crontab -
+brew install jq  # 需要用于JSON处理
 ```
+
+## 语言设置
+
+工具支持多语言输出，您可以使用以下命令切换语言：
+
+```bash
+# 初始化语言模块
+source ~/Scripts/env_check/modules/language.sh
+
+# 切换到中文
+set_language zh
+
+# 切换到英文
+set_language en
+```
+
+语言设置会影响：
+- 所有检查过程的输出
+- 生成的报告内容
+- 错误和警告信息
+- HTML报告界面
+
+语言偏好存储在 ~/.env_check_config/language 文件中，在会话之间保持不变。
 
 ## 使用方法
 
-### 基本用法
+### 基本操作
 ```bash
+# 运行环境检查
+cd ~/Scripts/env_check
 ./check_env_new.sh
+
+# 查看检查历史
+./check_history.sh
+
+# 仅运行分析
+./check_env_new.sh -a
 ```
 
 ### 高级选项
@@ -137,67 +186,51 @@ chmod +x ~/Scripts/env_check/scheduled_check.sh
   -h, --help           显示帮助信息
 ```
 
-### 使用示例
-1. 自定义命名：
-```bash
-./check_env_new.sh -n myproject -s prod
-# 生成: myproject_20250117_143000_prod/
-```
+### 自动检查
 
-2. 分析现有日志：
+#### 设置定期检查
 ```bash
-./check_env_new.sh -a
-```
-
-3. 设置保留期限：
-```bash
-./check_env_new.sh -k 60  # 保留60天的日志
-```
-
-### 定期检查
-您可以设置自动月度检查：
-```bash
-# 编辑 crontab 修改计划
+# 编辑 crontab
 crontab -e
 
-# 示例条目：
-# 每月运行（每月1日早上9点）
+# 每月检查（每月1日早上9点）
 0 9 1 * * ~/Scripts/env_check/scheduled_check.sh
 
-# 每周运行（每周一早上9点）
+# 每周检查（每周一早上9点）
 0 9 * * 1 ~/Scripts/env_check/scheduled_check.sh
 ```
 
-### 历史记录管理
-使用包含的工具脚本查看检查历史：
+#### 管理定期检查
 ```bash
-# 保存历史检查脚本
-cat > ~/Scripts/env_check/check_history.sh << 'EOF'
-#!/bin/bash
-HISTORY_DIR=~/.env_check_history
-echo "环境检查历史记录摘要"
-echo "--------------------"
-echo "最近的检查："
-[ -f "$HISTORY_DIR/scheduled_check.log" ] && tail -n 10 "$HISTORY_DIR/scheduled_check.log"
-echo -e "\n存档报告："
-find "$HISTORY_DIR" -name "mac_env_check_*" -type d -o -name "mac_env_check_*.tar.gz" | \
-    sort -r | \
-    while read -r file; do
-        if [ -d "$file" ]; then
-            echo "$(basename "$file") (活动)"
-        else
-            echo "$(basename "$file") (已归档)"
-        fi
-    done
-echo -e "\n存储使用情况："
-du -sh "$HISTORY_DIR"
-EOF
+# 查看当前计划
+crontab -l
 
-# 设置执行权限
-chmod +x ~/Scripts/env_check/check_history.sh
+# 删除定期检查
+crontab -l | grep -v "scheduled_check.sh" | crontab -
+```
 
-# 查看历史
-~/Scripts/env_check/check_history.sh
+### 历史记录管理
+
+#### 查看历史
+```bash
+# 查看历史摘要
+./check_history.sh
+
+# 查看特定检查结果
+ls -l ~/.env_check_history/active_checks/
+
+# 查看已归档的检查
+ls -l ~/.env_check_history/archives/
+```
+
+#### 管理历史记录
+```bash
+# 清理旧归档（超过指定天数）
+find ~/.env_check_history/archives -name "*.tar.gz" -mtime +90 -delete
+
+# 手动归档检查结果
+tar czf ~/.env_check_history/archives/check_result.tar.gz \
+    ~/.env_check_history/active_checks/check_result/
 ```
 
 ## 输出报告
@@ -223,16 +256,14 @@ chmod +x ~/Scripts/env_check/check_history.sh
 ## 日志管理
 
 ### 自动日志轮转
-- 可配置的保留期限（默认：30天，推荐：90天）
-- 自动将旧日志归档到 ~/.env_check_history/
+- 可配置的保留期限（默认：30天）
+- 自动归档旧日志
 - 压缩存储以提高空间效率
-- 通过 cron 任务实现自动月度检查
 
 ### 归档管理
-- 归档存储在 ~/.env_check_history/
+- 归档存储在 ~/.env_check_history/archives/
 - 使用tar.gz格式压缩
 - 建立索引便于检索
-- 包含定期检查日志和历史趋势
 
 ### 历史追踪
 - 维护系统状态随时间的变化
@@ -245,8 +276,8 @@ chmod +x ~/Scripts/env_check/check_history.sh
 ### 常见问题
 1. 权限被拒绝
 ```bash
-chmod +x check_env_new.sh
-chmod +x modules/*.sh
+chmod +x ~/Scripts/env_check/*.sh
+chmod +x ~/Scripts/env_check/modules/*.sh
 ```
 
 2. 缺少依赖
@@ -256,8 +287,26 @@ brew install jq  # 需要用于JSON处理
 
 3. 模块未找到
 ```bash
-# 确保所有模块文件存在于modules目录
-ls -l modules/
+# 验证模块目录结构
+ls -l ~/Scripts/env_check/modules/
+```
+
+4. 历史记录访问问题
+```bash
+# 检查历史目录权限
+ls -la ~/.env_check_history/
+# 修复权限（如果需要）
+chmod -R 755 ~/.env_check_history/
+```
+
+5. 定期检查问题
+```bash
+# 检查 crontab 条目
+crontab -l
+# 验证脚本权限
+ls -l ~/Scripts/env_check/scheduled_check.sh
+# 检查定期检查日志
+tail ~/.env_check_history/scheduled_check.log
 ```
 
 ## 贡献指南

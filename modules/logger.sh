@@ -19,6 +19,9 @@
 #########################################################################
 #!/bin/bash
 
+# Import language module
+source "${SCRIPT_DIR}/modules/language.sh"
+
 # Setup logging
 setup_logging() {
     # Ensure log directory exists
@@ -46,7 +49,7 @@ log_progress() {
     printf "] %3d%% " "$percent"
     
     # Print the check title
-    printf "${GREEN}Checking: %-30s${NC}" "$title..."
+    printf "${GREEN}%s: %-30s${NC}" "$(get_message "CHECKING")" "$title..."
     
     # Move to new line if it's the last check
     if [ $CURRENT_CHECK -eq $TOTAL_CHECKS ]; then
@@ -61,7 +64,7 @@ log_to_file() {
     if [ -f "$log_file" ]; then
         echo -e "$@" >> "$log_file"
     else
-        echo "Error: Could not write to log file: $log_file" >&2
+        echo "$(get_message "LOG_FILE_ERROR"): $log_file" >&2
         return 1
     fi
 }
@@ -69,20 +72,20 @@ log_to_file() {
 # Log error message
 log_error() {
     local message="$1"
-    echo -e "${RED}[ERROR] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG" >&2
+    echo -e "${RED}[$(get_message "ERROR")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG" >&2
     ((FAILED_CHECKS++))
 }
 
 # Log warning message
 log_warning() {
     local message="$1"
-    echo -e "${YELLOW}[WARNING] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG"
+    echo -e "${YELLOW}[$(get_message "WARNING")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG"
 }
 
 # Log success message
 log_success() {
     local message="$1"
-    echo -e "${GREEN}[SUCCESS] $message${NC}"
+    echo -e "${GREEN}[$(get_message "SUCCESS")] $message${NC}"
 }
 
 # Function to check command and log
@@ -90,13 +93,13 @@ check_command() {
     local cmd="$1"
     local log_file="$2"
     if command -v $cmd >/dev/null 2>&1; then
-        log_to_file "$log_file" "${GREEN}✓ $cmd is installed${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "CMD_INSTALLED") $cmd${NC}"
         $cmd --version 2>/dev/null | grep . >> "$log_file" || \
         $cmd -v 2>/dev/null | grep . >> "$log_file" || \
-        log_to_file "$log_file" "Version not available"
+        log_to_file "$log_file" "$(get_message "VERSION_NA")"
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $cmd is not installed${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "CMD_NOT_INSTALLED") $cmd${NC}"
         return 1
     fi
 }
@@ -106,10 +109,10 @@ check_file() {
     local file="$1"
     local log_file="$2"
     if [ -f "$file" ]; then
-        log_to_file "$log_file" "${GREEN}✓ $file exists${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "FILE_EXISTS") $file${NC}"
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $file does not exist${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "FILE_NOT_EXISTS") $file${NC}"
         return 1
     fi
 }
@@ -119,10 +122,34 @@ check_directory() {
     local dir="$1"
     local log_file="$2"
     if [ -d "$dir" ]; then
-        log_to_file "$log_file" "${GREEN}✓ $dir exists${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "DIR_EXISTS") $dir${NC}"
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $dir does not exist${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "DIR_NOT_EXISTS") $dir${NC}"
         return 1
+    fi
+}
+
+# Reset and show initial progress
+reset_progress() {
+    CURRENT_CHECK=0
+    printf "\n%s\n" "$(get_message "START_CHECKS")"
+}
+
+# Show completion status
+show_completion() {
+    local total_errors=$(grep -c "ERROR" "$ERROR_LOG" 2>/dev/null || echo "0")
+    local total_warnings=$(find "${OUTPUT_DIR}/logs" -type f -exec grep -l "WARNING\|✗" {} \; | wc -l)
+    
+    printf "\n%s\n" "$(get_message "CHECK_COMPLETION")"
+    printf "${GREEN}✓ $(get_message "COMPLETED_CHECKS") ${TOTAL_CHECKS}${NC}\n"
+    if [ $total_errors -gt 0 ]; then
+        printf "${RED}✗ $(get_message "FOUND_ERRORS") %d${NC}\n" "$total_errors"
+    fi
+    if [ $total_warnings -gt 0 ]; then
+        printf "${YELLOW}! $(get_message "FOUND_WARNINGS") %d${NC}\n" "$total_warnings"
+    fi
+    if [ $total_errors -eq 0 ] && [ $total_warnings -eq 0 ]; then
+        printf "${GREEN}✓ $(get_message "NO_ISSUES")${NC}\n"
     fi
 }

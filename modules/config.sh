@@ -19,6 +19,9 @@
 #########################################################################
 #!/bin/bash
 
+# Import language module
+source "${SCRIPT_DIR}/modules/language.sh"
+
 # Default configuration values
 NAME_PREFIX="mac_env_check"
 NAME_SUFFIX=""
@@ -31,6 +34,37 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
+
+# Help message translations
+show_help() {
+    if [ "$(get_current_lang)" = "zh" ]; then
+        cat << EOF
+MacOS 环境检查工具 v${VERSION}
+
+用法: $(basename "$0") [选项]
+
+选项:
+  -n, --name 前缀     设置日志文件的自定义前缀
+  -s, --suffix 后缀   设置日志文件的自定义后缀
+  -k, --keep 天数     保留指定天数的日志（默认：30天）
+  -a, --analyze-only  仅分析现有日志，不执行新的检查
+  -h, --help         显示此帮助信息
+EOF
+    else
+        cat << EOF
+MacOS Environment Check Tool v${VERSION}
+
+Usage: $(basename "$0") [OPTIONS]
+
+Options:
+  -n, --name PREFIX     Set custom prefix for log files
+  -s, --suffix SUFFIX   Set custom suffix for log files
+  -k, --keep DAYS      Keep logs for specified number of days (default: 30)
+  -a, --analyze-only   Only analyze existing logs without running checks
+  -h, --help           Show this help message
+EOF
+    fi
+}
 
 # Initialize configuration
 init_config() {
@@ -77,6 +111,47 @@ init_config() {
 
     # Initialize analysis files
     touch "$ANALYSIS_REPORT" "$STATISTICS_JSON" "$TRENDS_MD" "$SUMMARY_TXT" "$INDEX_HTML"
+    
+    # Output initial message in Chinese
+    echo "开始进行 MacBook 环境检查..."
+    echo "结果将保存在: ${OUTPUT_DIR}"
+}
+
+# Parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -n|--name)
+                NAME_PREFIX="$2"
+                shift 2
+                ;;
+            -s|--suffix)
+                NAME_SUFFIX="$2"
+                shift 2
+                ;;
+            -k|--keep)
+                KEEP_DAYS="$2"
+                shift 2
+                ;;
+            -a|--analyze-only)
+                ANALYZE_ONLY=true
+                shift
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                if [ "$(get_current_lang)" = "zh" ]; then
+                    echo "未知选项: $1"
+                else
+                    echo "Unknown option: $1"
+                fi
+                show_help
+                exit 1
+                ;;
+        esac
+    done
 }
 
 # Archive management
@@ -93,4 +168,13 @@ archive_old_logs() {
             rm -rf "$dir"
         fi
     done
+}
+
+# Get current language helper function
+get_current_lang() {
+    if [ -f "$HOME/.env_check_config/language" ]; then
+        cat "$HOME/.env_check_config/language"
+    else
+        echo "$DEFAULT_LANG"
+    fi
 }

@@ -19,29 +19,10 @@
 #########################################################################
 #!/bin/bash
 
-# Reset and show initial progress
-reset_progress() {
-    CURRENT_CHECK=0
-    printf "\n%s\n" "Starting environment checks..."
-}
+#!/bin/bash
 
-# Show completion status
-show_completion() {
-    local total_errors=$(grep -c "ERROR" "$ERROR_LOG" 2>/dev/null || echo "0")
-    local total_warnings=$(find "${OUTPUT_DIR}/logs" -type f -exec grep -l "WARNING\|✗" {} \; | wc -l)
-    
-    printf "\n%s\n" "Check completion status:"
-    printf "${GREEN}✓ Completed ${TOTAL_CHECKS} checks${NC}\n"
-    if [ $total_errors -gt 0 ]; then
-        printf "${RED}✗ Found %d errors${NC}\n" "$total_errors"
-    fi
-    if [ $total_warnings -gt 0 ]; then
-        printf "${YELLOW}! Found %d warnings${NC}\n" "$total_warnings"
-    fi
-    if [ $total_errors -eq 0 ] && [ $total_warnings -eq 0 ]; then
-        printf "${GREEN}✓ No issues found${NC}\n"
-    fi
-}
+# Import language module
+source "${SCRIPT_DIR}/modules/language.sh"
 
 # Run all system checks
 run_all_checks() {
@@ -68,7 +49,7 @@ run_all_checks() {
 
 # System Information Check
 check_system() {
-    log_progress "System Information"
+    log_progress "$(get_message "system_info")"
     {
         system_profiler SPSoftwareDataType | grep "System Version"
         system_profiler SPHardwareDataType | grep -E "Model Name|Processor|Memory"
@@ -77,17 +58,17 @@ check_system() {
 
 # Shell Environment Check
 check_shell() {
-    log_progress "Shell Environment"
+    log_progress "$(get_message "shell_env")"
     {
-        echo "Current Shell: $SHELL"
+        echo "$(get_message "CURRENT_SHELL"): $SHELL"
         check_file ~/.zshrc "$SHELL_LOG"
         check_file ~/.bashrc "$SHELL_LOG"
         check_file ~/.bash_profile "$SHELL_LOG"
         
-        echo -e "\nShell Configurations:"
+        echo -e "\n$(get_message "SHELL_CONFIGS"):"
         for file in ~/.{zshrc,bashrc,bash_profile,profile}; do
             if [ -f "$file" ]; then
-                echo "Content of $file:"
+                echo "$(get_message "CONTENT_OF") $file:"
                 grep -v "^#" "$file" | grep -v "^$"
             fi
         done
@@ -96,14 +77,14 @@ check_shell() {
 
 # PATH Configuration Check
 check_path() {
-    log_progress "PATH Configuration"
+    log_progress "$(get_message "path_config")"
     {
-        echo "PATH directories:"
+        echo "$(get_message "PATH_DIRS"):"
         echo "$PATH" | tr ':' '\n' | while read -r line; do
             if [ -d "$line" ]; then
                 echo "${GREEN}✓ $line${NC}"
             else
-                echo "${RED}✗ $line (not found)${NC}"
+                echo "${RED}✗ $line ($(get_message "NOT_FOUND"))${NC}"
             fi
         done
     } >> "$PATH_LOG"
@@ -111,28 +92,29 @@ check_path() {
 
 # Homebrew Check
 check_homebrew() {
-    log_progress "Homebrew"
+    log_progress "$(get_message "homebrew")"
     if command -v brew >/dev/null 2>&1; then
         {
-            echo "Homebrew is installed"
-            echo "Homebrew version: $(brew --version)"
-            echo -e "\nRunning brew doctor..."
+            echo "$(get_message "HOMEBREW_INSTALLED")"
+            echo "$(get_message "HOMEBREW_VERSION"): $(brew --version)"
+            
+            echo -e "\n$(get_message "RUNNING_BREW_DOCTOR")..."
             brew doctor 2>&1
             
-            echo -e "\nInstalled packages:"
+            echo -e "\n$(get_message "INSTALLED_PACKAGES"):"
             brew list --versions
             
-            echo -e "\nOutdated packages:"
+            echo -e "\n$(get_message "OUTDATED_PACKAGES"):"
             brew outdated
         } >> "$HOMEBREW_LOG"
     else
-        log_error "Homebrew is not installed" >> "$HOMEBREW_LOG"
+        log_error "$(get_message "HOMEBREW_NOT_INSTALLED")" >> "$HOMEBREW_LOG"
     fi
 }
 
 # Development Tools Check
 check_dev_tools() {
-    log_progress "Development Tools"
+    log_progress "$(get_message "dev_tools")"
     local tools=(git make gcc python3 pip3 node npm java docker)
     for tool in "${tools[@]}"; do
         check_command "$tool" "$TOOLS_LOG"
@@ -141,164 +123,162 @@ check_dev_tools() {
 
 # Python Environment Check
 check_python() {
-    log_progress "Python Environment"
+    log_progress "$(get_message "python_env")"
     {
         if command -v python3 >/dev/null 2>&1; then
-            echo "Python installation:"
+            echo "$(get_message "PYTHON_INSTALL"):"
             which python3
             python3 --version
             
             if command -v pip3 >/dev/null 2>&1; then
-                echo -e "\nInstalled pip packages:"
+                echo -e "\n$(get_message "INSTALLED_PIP_PACKAGES"):"
                 pip3 list
                 
-                echo -e "\nChecking for outdated packages:"
+                echo -e "\n$(get_message "CHECKING_OUTDATED"):"
                 pip3 list --outdated
             fi
             
             # Check virtual environments
             if command -v pyenv >/dev/null 2>&1; then
-                echo -e "\nPyenv versions:"
+                echo -e "\n$(get_message "PYENV_VERSIONS"):"
                 pyenv versions
             fi
         else
-            log_error "Python3 is not installed"
+            log_error "$(get_message "PYTHON_NOT_INSTALLED")"
         fi
     } >> "$PYTHON_LOG"
 }
 
 # Node.js Environment Check
 check_node() {
-    log_progress "Node.js Environment"
+    log_progress "$(get_message "node_env")"
     {
         if command -v node >/dev/null 2>&1; then
-            echo "Node.js installation:"
+            echo "$(get_message "NODE_INSTALL"):"
             which node
             node --version
             
             if command -v npm >/dev/null 2>&1; then
-                echo -e "\nGlobally installed npm packages:"
+                echo -e "\n$(get_message "GLOBAL_NPM_PACKAGES"):"
                 npm list -g --depth=0
                 
-                echo -e "\nChecking for security vulnerabilities:"
+                echo -e "\n$(get_message "CHECKING_VULNERABILITIES"):"
                 if [ -f "package-lock.json" ]; then
                     npm audit
                 else
-                    echo "Skipping npm audit (no package-lock.json found)"
+                    echo "$(get_message "SKIP_NPM_AUDIT")"
                 fi
             fi
         else
-            log_error "Node.js is not installed"
+            log_error "$(get_message "NODE_NOT_INSTALLED")"
         fi
     } >> "$NODE_LOG"
 }
 
 # Editor Configurations Check
 check_editors() {
-    log_progress "Editor Configurations"
+    log_progress "$(get_message "editor_config")"
     {
-        # Check Vim configuration
         check_file ~/.vimrc "$EDITOR_LOG"
         check_directory ~/.vim "$EDITOR_LOG"
         
-        # Check VS Code
         if [ -d "/Applications/Visual Studio Code.app" ]; then
-            echo "${GREEN}✓ VS Code is installed${NC}"
+            echo "${GREEN}✓ $(get_message "VSCODE_INSTALLED")${NC}"
             if command -v code >/dev/null 2>&1; then
-                echo -e "\nVS Code extensions:"
+                echo -e "\n$(get_message "VSCODE_EXTENSIONS"):"
                 code --list-extensions
             fi
         else
-            echo "${RED}✗ VS Code is not installed${NC}"
+            echo "${RED}✗ $(get_message "VSCODE_NOT_INSTALLED")${NC}"
         fi
     } >> "$EDITOR_LOG"
 }
 
 # Git Configuration Check
 check_git() {
-    log_progress "Git Configuration"
+    log_progress "$(get_message "git_config")"
     {
         if command -v git >/dev/null 2>&1; then
-            echo "Git configuration:"
+            echo "$(get_message "GIT_CONFIG"):"
             git config --list
         else
-            log_error "Git is not installed"
+            log_error "$(get_message "GIT_NOT_INSTALLED")"
         fi
     } >> "$GIT_LOG"
 }
 
 # Disk Space Check
 check_disk() {
-    log_progress "Disk Space"
+    log_progress "$(get_message "disk_space")"
     {
-        echo "Disk space usage:"
+        echo "$(get_message "DISK_USAGE"):"
         df -h /
         
-        echo -e "\nLarge files in home directory:"
+        echo -e "\n$(get_message "LARGE_FILES"):"
         find ~ -type f -size +100M -exec ls -lh {} \; 2>/dev/null
     } >> "$DISK_LOG"
 }
 
 # Network Configuration Check
 check_network() {
-    log_progress "Network Configuration"
+    log_progress "$(get_message "network")"
     {
-        echo "Network interfaces:"
+        echo "$(get_message "NETWORK_INTERFACES"):"
         ifconfig | grep -A 4 "^[a-zA-Z]"
         
-        echo -e "\nDNS configuration:"
+        echo -e "\n$(get_message "DNS_CONFIG"):"
         cat /etc/resolv.conf
         
-        echo -e "\nActive network ports:"
+        echo -e "\n$(get_message "ACTIVE_PORTS"):"
         lsof -i -P -n | grep LISTEN
     } >> "$NETWORK_LOG"
 }
 
 # Security Check
 check_security() {
-    log_progress "Security Settings"
+    log_progress "$(get_message "security")"
     {
         # Check FileVault
         if fdesetup status | grep -q "FileVault is On"; then
-            echo "${GREEN}✓ FileVault is enabled${NC}"
+            echo "${GREEN}✓ $(get_message "FILEVAULT_ENABLED")${NC}"
         else
-            echo "${RED}✗ FileVault is not enabled${NC}"
+            echo "${RED}✗ $(get_message "FILEVAULT_DISABLED")${NC}"
         fi
         
         # Check Firewall
         if /usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate | grep -q "enabled"; then
-            echo "${GREEN}✓ Firewall is enabled${NC}"
+            echo "${GREEN}✓ $(get_message "FIREWALL_ENABLED")${NC}"
         else
-            echo "${RED}✗ Firewall is not enabled${NC}"
+            echo "${RED}✗ $(get_message "FIREWALL_DISABLED")${NC}"
         fi
         
         # Check SIP Status
         if csrutil status | grep -q "enabled"; then
-            echo "${GREEN}✓ System Integrity Protection is enabled${NC}"
+            echo "${GREEN}✓ $(get_message "SIP_ENABLED")${NC}"
         else
-            echo "${RED}✗ System Integrity Protection is disabled${NC}"
+            echo "${RED}✗ $(get_message "SIP_DISABLED")${NC}"
         fi
     } >> "$SECURITY_LOG"
 }
 
 # Dependencies Check
 check_dependencies() {
-    log_progress "Dependencies"
+    log_progress "$(get_message "dependencies")"
     {
-        echo "Checking package dependencies..."
+        echo "$(get_message "CHECKING_DEPENDENCIES")..."
         
         if command -v brew >/dev/null 2>&1; then
-            echo -e "\nHomebrew dependencies:"
+            echo -e "\n$(get_message "HOMEBREW_DEPS"):"
             brew deps --installed
         fi
         
         if command -v pip3 >/dev/null 2>&1; then
-            echo -e "\nPython package dependencies:"
+            echo -e "\n$(get_message "PYTHON_DEPS"):"
             pip3 check
         fi
         
         if command -v npm >/dev/null 2>&1; then
-            echo -e "\nNode.js package dependencies:"
+            echo -e "\n$(get_message "NODE_DEPS"):"
             npm ls -g --depth=0
         fi
     } >> "$DEPS_LOG"
@@ -306,21 +286,21 @@ check_dependencies() {
 
 # Configuration Conflicts Check
 check_conflicts() {
-    log_progress "Configuration Conflicts"
+    log_progress "$(get_message "conflicts")"
     {
-        echo "Checking for PATH duplicates:"
+        echo "$(get_message "CHECKING_PATH_DUPLICATES"):"
         echo "$PATH" | tr ':' '\n' | sort | uniq -d
         
-        echo -e "\nChecking for alias conflicts:"
+        echo -e "\n$(get_message "CHECKING_ALIAS_CONFLICTS"):"
         for file in ~/.{bashrc,zshrc,bash_aliases,zsh_aliases}; do
             if [ -f "$file" ]; then
-                echo "Checking $file for duplicate aliases:"
+                echo "$(get_message "CHECKING_FILE_ALIASES") $file:"
                 grep "^alias" "$file" | sort | uniq -d
             fi
         done
         
         if command -v java >/dev/null 2>&1; then
-            echo -e "\nChecking Java versions:"
+            echo -e "\n$(get_message "CHECKING_JAVA_VERSIONS"):"
             /usr/libexec/java_home -V 2>&1
         fi
     } >> "$CONFLICTS_LOG"
@@ -328,21 +308,21 @@ check_conflicts() {
 
 # Performance Check
 check_performance() {
-    log_progress "System Performance"
+    log_progress "$(get_message "performance")"
     {
-        echo "Top CPU-consuming processes:"
+        echo "$(get_message "TOP_CPU_PROCESSES"):"
         ps aux | head -1
         ps aux | sort -nr -k 3 | head -5
         
-        echo -e "\nTop Memory-consuming processes:"
+        echo -e "\n$(get_message "TOP_MEMORY_PROCESSES"):"
         ps aux | head -1
         ps aux | sort -nr -k 4 | head -5
         
-        echo -e "\nSystem load averages:"
+        echo -e "\n$(get_message "SYSTEM_LOAD"):"
         uptime
         
         if command -v vm_stat >/dev/null 2>&1; then
-            echo -e "\nVirtual memory statistics:"
+            echo -e "\n$(get_message "VM_STATS"):"
             vm_stat
         fi
     } >> "$PERFORMANCE_LOG"

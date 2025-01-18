@@ -3,16 +3,31 @@
 ## Overview
 This tool provides comprehensive environment checking and analysis for MacOS development setups. It helps identify configuration issues, analyzes dependencies, and maintains historical records of system health. The tool is modularly designed for better maintenance and extensibility.
 
-## Tool Structure
+## Directory Structure
+
+### Installation Layout
 ```
-mac_env_check/
-├── check_env_new.sh          # Main script
-└── modules/
-    ├── config.sh            # Configuration module
-    ├── logger.sh            # Logging utilities
-    ├── checks.sh            # System check implementations
-    ├── reporter.sh          # Report generation
-    └── analyzer.sh          # Analysis functions
+~/Scripts/env_check/                 # Installation directory
+├── check_env_new.sh                # Main environment check script
+├── check_history.sh                # History management utility
+├── scheduled_check.sh              # Automated check scheduler
+└── modules/                        # Core modules
+    ├── config.sh                   # Configuration settings
+    ├── language.sh                 # Language localization
+    ├── logger.sh                   # Logging utilities
+    ├── checks.sh                   # System check implementations
+    ├── reporter.sh                 # Report generation
+    └── analyzer.sh                 # Analysis functions
+```
+
+### History Storage
+```
+~/.env_check_history/               # History storage
+├── scheduled_check.log             # Scheduled checks log
+├── active_checks/                  # Recent check results
+│   └── mac_env_check_YYYYMMDD/    # Check result directories
+└── archives/                       # Compressed old results
+    └── mac_env_check_YYYYMMDD.tar.gz
 ```
 
 ## Features
@@ -40,7 +55,7 @@ mac_env_check/
 - Security settings verification
 
 ### 4. Log Management
-#### Output Directory Structure
+#### Check Output Structure
 ```
 {PREFIX}_{TIMESTAMP}_{SUFFIX}/
 ├── logs/
@@ -78,54 +93,73 @@ mac_env_check/
 
 ## Installation
 
-1. Set up the directory structure:
+1. Set up directories:
 ```bash
 # Create script directory
 mkdir -p ~/Scripts/env_check
 
-# Clone the repository
+# Create history and config directories
+mkdir -p ~/.env_check_history/{active_checks,archives}
+mkdir -p ~/.env_check_config
+```
+
+2. Clone and copy files:
+```bash
+# Clone repository
 git clone https://github.com/yourusername/mac_env_check.git
 cd mac_env_check
 
-# Copy files to script directory
-cp -r {check_env_new.sh,modules} ~/Scripts/env_check/
-
-# Create history directory
-mkdir -p ~/.env_check_history
+# Copy all files to script directory
+cp -r {check_env_new.sh,check_history.sh,scheduled_check.sh,modules} ~/Scripts/env_check/
 ```
 
-2. Set execution permissions:
+3. Set permissions:
 ```bash
-chmod +x ~/Scripts/env_check/check_env_new.sh
+chmod +x ~/Scripts/env_check/*.sh
 chmod +x ~/Scripts/env_check/modules/*.sh
 ```
 
-3. Set up scheduled checks (optional):
+4. Install dependencies:
 ```bash
-# Save the scheduled check script
-cat > ~/Scripts/env_check/scheduled_check.sh << 'EOF'
-#!/bin/bash
-LOG_FILE=~/.env_check_history/scheduled_check.log
-echo "Running scheduled check at $(date)" >> "$LOG_FILE"
-cd ~/Scripts/env_check
-./check_env_new.sh -k 90
-echo "Check completed at $(date)" >> "$LOG_FILE"
-echo "----------------------------------------" >> "$LOG_FILE"
-EOF
-
-# Set execution permission
-chmod +x ~/Scripts/env_check/scheduled_check.sh
-
-# Add to crontab (runs at 9 AM on the 1st of each month)
-(crontab -l 2>/dev/null; echo "0 9 1 * * ~/Scripts/env_check/scheduled_check.sh") | crontab -
+brew install jq  # Required for JSON processing
 ```
+
+## Language Settings
+
+The tool supports multilingual output. You can switch between languages using:
+
+```bash
+# Initialize language module
+source ~/Scripts/env_check/modules/language.sh
+
+# Switch to Chinese
+set_language zh
+
+# Switch to English
+set_language en
+```
+
+Language settings affect:
+- All check process outputs
+- Generated reports
+- Error and warning messages
+- HTML report interface
+
+The language preference is stored in ~/.env_check_config/language and persists between sessions.
 
 ## Usage
 
-### Basic Usage
+### Basic Operations
 ```bash
+# Run environment check
 cd ~/Scripts/env_check
 ./check_env_new.sh
+
+# View check history
+./check_history.sh
+
+# Run analysis only
+./check_env_new.sh -a
 ```
 
 ### Advanced Options
@@ -138,67 +172,51 @@ Options:
   -h, --help           Show this help message
 ```
 
-### Examples
-1. Custom naming:
-```bash
-./check_env_new.sh -n myproject -s prod
-# Creates: myproject_20250117_143000_prod/
-```
+### Automated Checks
 
-2. Analyze existing logs:
+#### Setting Up Scheduled Checks
 ```bash
-./check_env_new.sh -a
-```
-
-3. Set retention period:
-```bash
-./check_env_new.sh -k 60  # Keep logs for 60 days
-```
-
-### Scheduled Checks
-You can set up automatic monthly checks with:
-```bash
-# Edit crontab to modify schedule
+# Edit crontab
 crontab -e
 
-# Example entries:
-# Run monthly (1st of each month at 9 AM)
+# Monthly check (1st of each month at 9 AM)
 0 9 1 * * ~/Scripts/env_check/scheduled_check.sh
 
-# Run weekly (Every Monday at 9 AM)
+# Weekly check (Every Monday at 9 AM)
 0 9 * * 1 ~/Scripts/env_check/scheduled_check.sh
 ```
 
-### History Management
-View check history using the included utility script:
+#### Managing Scheduled Checks
 ```bash
-# Save the history check script
-cat > ~/Scripts/env_check/check_history.sh << 'EOF'
-#!/bin/bash
-HISTORY_DIR=~/.env_check_history
-echo "Environment Check History Summary"
-echo "--------------------------------"
-echo "Recent Checks:"
-[ -f "$HISTORY_DIR/scheduled_check.log" ] && tail -n 10 "$HISTORY_DIR/scheduled_check.log"
-echo -e "\nArchived Reports:"
-find "$HISTORY_DIR" -name "mac_env_check_*" -type d -o -name "mac_env_check_*.tar.gz" | \
-    sort -r | \
-    while read -r file; do
-        if [ -d "$file" ]; then
-            echo "$(basename "$file") (active)"
-        else
-            echo "$(basename "$file") (archived)"
-        fi
-    done
-echo -e "\nStorage Usage:"
-du -sh "$HISTORY_DIR"
-EOF
+# View current schedule
+crontab -l
 
-# Set execution permission
-chmod +x ~/Scripts/env_check/check_history.sh
+# Remove scheduled checks
+crontab -l | grep -v "scheduled_check.sh" | crontab -
+```
 
-# View history
-~/Scripts/env_check/check_history.sh
+### History Management
+
+#### Viewing History
+```bash
+# View history summary
+./check_history.sh
+
+# View specific check result
+ls -l ~/.env_check_history/active_checks/
+
+# View archived checks
+ls -l ~/.env_check_history/archives/
+```
+
+#### Managing History
+```bash
+# Clean old archives (older than specified days)
+find ~/.env_check_history/archives -name "*.tar.gz" -mtime +90 -delete
+
+# Manually archive a check result
+tar czf ~/.env_check_history/archives/check_result.tar.gz \
+    ~/.env_check_history/active_checks/check_result/
 ```
 
 ## Output Reports
@@ -224,16 +242,14 @@ chmod +x ~/Scripts/env_check/check_history.sh
 ## Log Management
 
 ### Automatic Log Rotation
-- Configurable retention period (default: 30 days, recommended: 90 days)
-- Automatic archiving of old logs to ~/.env_check_history/
+- Configurable retention period (default: 30 days)
+- Automatic archiving of old logs
 - Compressed storage for space efficiency
-- Automated monthly checks through cron jobs
 
 ### Archive Management
-- Archives stored in ~/.env_check_history/
+- Archives stored in ~/.env_check_history/archives/
 - Compressed using tar.gz format
 - Indexed for easy retrieval
-- Includes scheduled check logs and historical trends
 
 ### History Tracking
 - Maintains system state changes over time
@@ -246,8 +262,8 @@ chmod +x ~/Scripts/env_check/check_history.sh
 ### Common Issues
 1. Permission Denied
 ```bash
-chmod +x check_env_new.sh
-chmod +x modules/*.sh
+chmod +x ~/Scripts/env_check/*.sh
+chmod +x ~/Scripts/env_check/modules/*.sh
 ```
 
 2. Missing Dependencies
@@ -257,8 +273,26 @@ brew install jq  # Required for JSON processing
 
 3. Module Not Found
 ```bash
-# Ensure all module files exist in the modules directory
-ls -l modules/
+# Verify module directory structure
+ls -l ~/Scripts/env_check/modules/
+```
+
+4. History Access Issues
+```bash
+# Check history directory permissions
+ls -la ~/.env_check_history/
+# Fix permissions if needed
+chmod -R 755 ~/.env_check_history/
+```
+
+5. Scheduled Check Issues
+```bash
+# Check crontab entries
+crontab -l
+# Verify script permissions
+ls -l ~/Scripts/env_check/scheduled_check.sh
+# Check scheduled check log
+tail ~/.env_check_history/scheduled_check.log
 ```
 
 ## Contributing

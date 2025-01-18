@@ -17,7 +17,11 @@
 # mail:         kominjeong017@gmail.com
 # Created Time: Fri 17 Jan 14:40:06 2025
 #########################################################################
+
 #!/bin/bash
+
+# Import language module
+source "${SCRIPT_DIR}/modules/language.sh"
 
 # Generate all reports
 generate_all_reports() {
@@ -34,9 +38,10 @@ create_html_index() {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Environment Check Results</title>
+    <meta charset="UTF-8">
+    <title>$(get_message "ENV_CHECK_RESULTS")</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; }
         .container { max-width: 800px; margin: 0 auto; }
         .section { margin-bottom: 20px; }
         .status-ok { color: green; }
@@ -52,23 +57,23 @@ create_html_index() {
 </head>
 <body>
     <div class="container">
-        <h1>Environment Check Results</h1>
-        <p>Generated on: $(date)</p>
+        <h1>$(get_message "ENV_CHECK_RESULTS")</h1>
+        <p>$(get_message "GENERATED_ON"): $(date)</p>
 
         <div class="summary">
-            <h2>Quick Summary</h2>
-            <p>Total Checks: $(find "${OUTPUT_DIR}/logs" -type f -name "*.log" | wc -l)</p>
-            <p>Errors: $(grep -r "ERROR" "${OUTPUT_DIR}/logs" | wc -l)</p>
-            <p>Warnings: $(grep -r "WARNING" "${OUTPUT_DIR}/logs" | wc -l)</p>
+            <h2>$(get_message "QUICK_SUMMARY")</h2>
+            <p>$(get_message "TOTAL_CHECKS"): $(find "${OUTPUT_DIR}/logs" -type f -name "*.log" | wc -l)</p>
+            <p>$(get_message "ERRORS"): $(grep -r "ERROR" "${OUTPUT_DIR}/logs" | wc -l)</p>
+            <p>$(get_message "WARNINGS"): $(grep -r "WARNING" "${OUTPUT_DIR}/logs" | wc -l)</p>
         </div>
 
         <div class="section">
-            <h2>Check Results:</h2>
+            <h2>$(get_message "CHECK_RESULTS")</h2>
             <table>
                 <tr>
-                    <th>Component</th>
-                    <th>Status</th>
-                    <th>Details</th>
+                    <th>$(get_message "COMPONENT")</th>
+                    <th>$(get_message "STATUS")</th>
+                    <th>$(get_message "DETAILS")</th>
                 </tr>
 EOF
 
@@ -80,20 +85,20 @@ EOF
 
             if grep -q "ERROR" "$log_file" 2>/dev/null; then
                 status="error"
-                status_text="Failed"
+                status_text="$(get_message "FAILED")"
             elif grep -q "WARNING\|✗" "$log_file" 2>/dev/null; then
                 status="warning"
-                status_text="Warning"
+                status_text="$(get_message "WARNING")"
             else
                 status="ok"
-                status_text="Passed"
+                status_text="$(get_message "PASSED")"
             fi
 
             cat >> "$INDEX_HTML" << EOF
                 <tr>
-                    <td>$component</td>
+                    <td>$(get_message "$component")</td>
                     <td class="status-${status}">${status_text}</td>
-                    <td><a href="logs/${filename}" class="log-link">View Details</a></td>
+                    <td><a href="logs/${filename}" class="log-link">$(get_message "VIEW_DETAILS")</a></td>
                 </tr>
 EOF
         fi
@@ -104,12 +109,12 @@ EOF
         </div>
 
         <div class="section">
-            <h2>Analysis Reports</h2>
+            <h2>$(get_message "ANALYSIS_REPORTS")</h2>
             <ul>
-                <li><a href="analysis/analysis_report.md" class="log-link">Full Analysis Report</a></li>
-                <li><a href="analysis/statistics.json" class="log-link">Statistics</a></li>
-                <li><a href="analysis/trends.md" class="log-link">Historical Trends</a></li>
-                <li><a href="summary.txt" class="log-link">Summary Report</a></li>
+                <li><a href="analysis/analysis_report.md" class="log-link">$(get_message "FULL_ANALYSIS")</a></li>
+                <li><a href="analysis/statistics.json" class="log-link">$(get_message "STATISTICS")</a></li>
+                <li><a href="analysis/trends.md" class="log-link">$(get_message "HISTORICAL_TRENDS")</a></li>
+                <li><a href="summary.txt" class="log-link">$(get_message "SUMMARY_REPORT")</a></li>
             </ul>
         </div>
     </div>
@@ -121,50 +126,50 @@ EOF
 # Create summary report
 create_summary() {
     {
-        echo "Environment Check Summary"
-        echo "Generated: $(date)"
+        echo "$(get_message "ENV_CHECK_SUMMARY")"
+        echo "$(get_message "GENERATED"): $(date)"
         echo "----------------------------------------"
 
-        echo -e "\nSystem Information:"
-        grep "System Version" "$SYSTEM_LOG" 2>/dev/null || echo "System information not available"
+        echo -e "\n$(get_message "SYSTEM_INFO"):"
+        grep "System Version" "$SYSTEM_LOG" 2>/dev/null || echo "$(get_message "SYSTEM_INFO_NA")"
 
-        echo -e "\nKey Findings:"
+        echo -e "\n$(get_message "KEY_FINDINGS"):"
 
         # Add shell information
-        echo "Shell: $SHELL"
+        echo "$(get_message "SHELL"): $SHELL"
 
         # Add Python version
         if command -v python3 >/dev/null 2>&1; then
             python3 --version
         else
-            echo "Python3 not installed"
+            echo "$(get_message "PYTHON_NOT_INSTALLED")"
         fi
 
         # Add Node.js version
         if command -v node >/dev/null 2>&1; then
             node --version
         else
-            echo "Node.js not installed"
+            echo "$(get_message "NODE_NOT_INSTALLED")"
         fi
 
         # Add Homebrew status
         if command -v brew >/dev/null 2>&1; then
-            echo "Homebrew: Installed"
-            brew doctor 2>&1 | grep -i "error\|warning" || echo "No Homebrew issues found"
+            echo "$(get_message "HOMEBREW"): $(get_message "INSTALLED")"
+            brew doctor 2>&1 | grep -i "error\|warning" || echo "$(get_message "NO_HOMEBREW_ISSUES")"
         else
-            echo "Homebrew: Not installed"
+            echo "$(get_message "HOMEBREW"): $(get_message "NOT_INSTALLED")"
         fi
 
-        echo -e "\nIssues Found:"
+        echo -e "\n$(get_message "ISSUES_FOUND"):"
         find "${OUTPUT_DIR}/logs" -type f -exec grep -H "ERROR\|WARNING\|✗" {} \; | \
             sed 's/.*logs\///' | sed 's/\.log:/: /'
 
-        echo -e "\nRecommendations:"
+        echo -e "\n$(get_message "RECOMMENDATIONS"):"
         if [ -s "$ERROR_LOG" ]; then
-            echo "Critical issues that need attention:"
+            echo "$(get_message "CRITICAL_ISSUES"):"
             grep "ERROR" "$ERROR_LOG"
         else
-            echo "No critical issues found."
+            echo "$(get_message "NO_CRITICAL_ISSUES")"
         fi
     } > "$SUMMARY_TXT"
 }
