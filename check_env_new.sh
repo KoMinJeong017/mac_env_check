@@ -103,10 +103,6 @@ main() {
     # Archive old logs
     archive_old_logs
 
-    echo -e "\n${GREEN}$(get_message "ENV_CHECK_COMPLETED")${NC}"
-    echo "$(get_message "RESULTS_AVAILABLE"): ${OUTPUT_DIR}"
-    echo "$(get_message "VIEW_REPORT"): ${OUTPUT_DIR}/index.html"
-
     if [ $FAILED_CHECKS -gt 0 ]; then
         echo -e "\n${RED}$(get_message "WARNING_CHECKS_FAILED") $FAILED_CHECKS $(get_message "CHECKS_FAILED_DETAILS")${NC}"
         exit 1

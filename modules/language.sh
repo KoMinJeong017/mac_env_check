@@ -454,6 +454,25 @@ get_message() {
                     echo "系统性能"
                     ;;
                 
+                # Completion messages
+                "COMPLETION_STATUS")
+                    echo "检查完成状态："
+                    ;;
+                "CHECKS_COMPLETED")
+                    echo "已完成检查项目："
+                    ;;
+                "WARNINGS_FOUND")
+                    echo "发现警告数量："
+                    ;;
+                "CHECK_COMPLETE_MSG")
+                    echo "环境检查完成！"
+                    ;;
+                "REPORT_SAVED_AT")
+                    echo "结果保存在:"
+                    ;;
+                "CLICK_TO_VIEW")
+                    echo "点击查看详细报告"
+                    ;;
                 *)
                     echo "$key"
                     ;;
@@ -485,6 +504,24 @@ get_message() {
                     ;;
                 "ARCHIVED")
                     echo "archived"
+                    ;;
+                "COMPLETION_STATUS")
+                    echo "Check Completion Status:"
+                    ;;
+                "CHECKS_COMPLETED")
+                    echo "Checks Completed:"
+                    ;;
+                "WARNINGS_FOUND")
+                    echo "Warnings Found:"
+                    ;;
+                "CHECK_COMPLETE_MSG")
+                    echo "Environment Check Complete!"
+                    ;;
+                "REPORT_SAVED_AT")
+                    echo "Results saved at:"
+                    ;;
+                "CLICK_TO_VIEW")
+                    echo "Click to view detailed report"
                     ;;
                 *)
                     echo "$key"

@@ -22,11 +22,51 @@
 # Import language module
 source "${SCRIPT_DIR}/modules/language.sh"
 
+# Function to ensure directory exists with proper permissions
+ensure_directory() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" || {
+            echo "$(get_message "DIR_CREATE_ERROR"): $dir" >&2
+            return 1
+        }
+    fi
+    chmod 755 "$dir" || {
+        echo "$(get_message "DIR_PERMISSION_ERROR"): $dir" >&2
+        return 1
+    }
+    return 0
+}
+
+# Function to ensure file exists with proper permissions
+ensure_file() {
+    local file="$1"
+    local dir="$(dirname "$file")"
+    
+    # First ensure parent directory exists
+    ensure_directory "$dir" || return 1
+    
+    # Create or check file
+    if [ ! -f "$file" ]; then
+        touch "$file" || {
+            echo "$(get_message "FILE_CREATE_ERROR"): $file" >&2
+            return 1
+        }
+    fi
+    
+    # Set file permissions
+    chmod 644 "$file" || {
+        echo "$(get_message "FILE_PERMISSION_ERROR"): $file" >&2
+        return 1
+    }
+    return 0
+}
+
 # Setup logging
 setup_logging() {
-    # Ensure log directory exists
-    mkdir -p "$(dirname "$ERROR_LOG")"
-    touch "$ERROR_LOG"
+    # Ensure log directory exists with proper permissions
+    ensure_directory "$(dirname "$ERROR_LOG")" || return 1
+    ensure_file "$ERROR_LOG" || return 1
 }
 
 # Progress tracking variables
@@ -61,25 +101,33 @@ log_progress() {
 log_to_file() {
     local log_file="$1"
     shift
-    if [ -f "$log_file" ]; then
-        echo -e "$@" >> "$log_file"
-    else
-        echo "$(get_message "LOG_FILE_ERROR"): $log_file" >&2
+    
+    # Ensure file exists and has proper permissions
+    ensure_file "$log_file" || return 1
+    
+    # Try to write to file
+    if ! echo -e "$@" >> "$log_file" 2>/dev/null; then
+        echo "$(get_message "FILE_WRITE_ERROR"): $log_file" >&2
         return 1
     fi
+    return 0
 }
 
 # Log error message
 log_error() {
     local message="$1"
-    echo -e "${RED}[$(get_message "ERROR")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG" >&2
+    if ! echo -e "${RED}[$(get_message "ERROR")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG" >&2; then
+        echo "$(get_message "ERROR_LOG_WRITE_ERROR")" >&2
+    fi
     ((FAILED_CHECKS++))
 }
 
 # Log warning message
 log_warning() {
     local message="$1"
-    echo -e "${YELLOW}[$(get_message "WARNING")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG"
+    if ! echo -e "${YELLOW}[$(get_message "WARNING")] $(date '+%Y-%m-%d %H:%M:%S') - $message${NC}" | tee -a "$ERROR_LOG"; then
+        echo "$(get_message "WARNING_LOG_WRITE_ERROR")" >&2
+    fi
 }
 
 # Log success message
@@ -93,13 +141,13 @@ check_command() {
     local cmd="$1"
     local log_file="$2"
     if command -v $cmd >/dev/null 2>&1; then
-        log_to_file "$log_file" "${GREEN}✓ $(get_message "CMD_INSTALLED") $cmd${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "CMD_INSTALLED") $cmd${NC}" || return 1
         $cmd --version 2>/dev/null | grep . >> "$log_file" || \
         $cmd -v 2>/dev/null | grep . >> "$log_file" || \
-        log_to_file "$log_file" "$(get_message "VERSION_NA")"
+        log_to_file "$log_file" "$(get_message "VERSION_NA")" || return 1
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $(get_message "CMD_NOT_INSTALLED") $cmd${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "CMD_NOT_INSTALLED") $cmd${NC}" || return 1
         return 1
     fi
 }
@@ -109,10 +157,10 @@ check_file() {
     local file="$1"
     local log_file="$2"
     if [ -f "$file" ]; then
-        log_to_file "$log_file" "${GREEN}✓ $(get_message "FILE_EXISTS") $file${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "FILE_EXISTS") $file${NC}" || return 1
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $(get_message "FILE_NOT_EXISTS") $file${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "FILE_NOT_EXISTS") $file${NC}" || return 1
         return 1
     fi
 }
@@ -122,10 +170,10 @@ check_directory() {
     local dir="$1"
     local log_file="$2"
     if [ -d "$dir" ]; then
-        log_to_file "$log_file" "${GREEN}✓ $(get_message "DIR_EXISTS") $dir${NC}"
+        log_to_file "$log_file" "${GREEN}✓ $(get_message "DIR_EXISTS") $dir${NC}" || return 1
         return 0
     else
-        log_to_file "$log_file" "${RED}✗ $(get_message "DIR_NOT_EXISTS") $dir${NC}"
+        log_to_file "$log_file" "${RED}✗ $(get_message "DIR_NOT_EXISTS") $dir${NC}" || return 1
         return 1
     fi
 }
@@ -161,21 +209,28 @@ show_completion() {
     : "${total_warnings:=0}"
     
     # 显示完成状态
-    printf "\n%s\n" "$(get_message "CHECK_COMPLETION")"
-    printf "${GREEN}✓ $(get_message "COMPLETED_CHECKS") ${TOTAL_CHECKS}${NC}\n"
+    printf "\n%s\n" "$(get_message "COMPLETION_STATUS")"
+    printf "${GREEN}✓ $(get_message "CHECKS_COMPLETED") ${TOTAL_CHECKS}${NC}\n"
     
     # 使用(()) 进行数值比较
     if ((total_errors > 0)); then
-        printf "${RED}✗ $(get_message "FOUND_ERRORS") %d${NC}\n" "${total_errors}"
+        printf "${RED}✗ $(get_message "ERRORS_FOUND") %d${NC}\n" "${total_errors}"
     fi
     
     if ((total_warnings > 0)); then
-        printf "${YELLOW}! $(get_message "FOUND_WARNINGS") %d${NC}\n" "${total_warnings}"
+        printf "${YELLOW}! $(get_message "WARNINGS_FOUND") %d${NC}\n" "${total_warnings}"
     fi
     
     if ((total_errors == 0 && total_warnings == 0)); then
         printf "${GREEN}✓ $(get_message "NO_ISSUES")${NC}\n"
     fi
     
-    printf "\n"
+    # 添加完成消息和报告链接
+    printf "\n${GREEN}%s${NC}\n" "$(get_message "CHECK_COMPLETE_MSG")"
+    printf "%s %s\n" "$(get_message "REPORT_SAVED_AT")" "$OUTPUT_DIR"
+    
+    # 创建可点击的HTML报告链接
+    local html_path="file://${INDEX_HTML}"
+    printf "\n%s " "$(get_message "CLICK_TO_VIEW")"
+    printf "\e]8;;%s\e\\%s\e]8;;\e\\\n" "$html_path" "$html_path"
 }

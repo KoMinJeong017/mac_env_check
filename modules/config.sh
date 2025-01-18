@@ -35,6 +35,130 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
+# Initialize directory with proper permissions
+init_directory() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir" || {
+            echo "$(get_message "DIR_CREATE_ERROR"): $dir" >&2
+            return 1
+        }
+    fi
+    
+    # Check write permission
+    if [ ! -w "$dir" ]; then
+        chmod u+w "$dir" || {
+            echo "$(get_message "DIR_PERMISSION_ERROR"): $dir" >&2
+            return 1
+        }
+    fi
+    
+    # Set standard permissions
+    chmod 755 "$dir" || {
+        echo "$(get_message "DIR_PERMISSION_ERROR"): $dir" >&2
+        return 1
+    }
+    return 0
+}
+
+# Test write access
+test_write_access() {
+    local dir="$1"
+    local test_file="${dir}/.write_test"
+    
+    if ! touch "$test_file" 2>/dev/null; then
+        echo "$(get_message "DIR_WRITE_ERROR"): $dir" >&2
+        return 1
+    fi
+    rm -f "$test_file"
+    return 0
+}
+
+# Initialize configuration
+init_config() {
+    # Get project root directory
+    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+    
+    # Set history directory in project root
+    HISTORY_DIR="${PROJECT_ROOT}/.env_check_history"
+    
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    OUTPUT_DIR="${HISTORY_DIR}/active_checks/${NAME_PREFIX}_${TIMESTAMP}${NAME_SUFFIX:+_$NAME_SUFFIX}"
+    
+    # Initialize directory structure with proper permissions
+    local directories=(
+        "${HISTORY_DIR}"
+        "${HISTORY_DIR}/active_checks"
+        "${HISTORY_DIR}/archives"
+        "${OUTPUT_DIR}"
+        "${OUTPUT_DIR}/logs"
+        "${OUTPUT_DIR}/analysis"
+    )
+    
+    for dir in "${directories[@]}"; do
+        init_directory "$dir" || {
+            echo "$(get_message "INIT_DIR_ERROR"): $dir" >&2
+            return 1
+        }
+        test_write_access "$dir" || {
+            echo "$(get_message "WRITE_TEST_ERROR"): $dir" >&2
+            return 1
+        }
+    done
+    
+    # Define log files
+    SYSTEM_LOG="${OUTPUT_DIR}/logs/01_system_info.log"
+    SHELL_LOG="${OUTPUT_DIR}/logs/02_shell_env.log"
+    PATH_LOG="${OUTPUT_DIR}/logs/03_path_config.log"
+    HOMEBREW_LOG="${OUTPUT_DIR}/logs/04_homebrew.log"
+    TOOLS_LOG="${OUTPUT_DIR}/logs/05_dev_tools.log"
+    PYTHON_LOG="${OUTPUT_DIR}/logs/06_python_env.log"
+    NODE_LOG="${OUTPUT_DIR}/logs/07_node_env.log"
+    EDITOR_LOG="${OUTPUT_DIR}/logs/08_editor_config.log"
+    GIT_LOG="${OUTPUT_DIR}/logs/09_git_config.log"
+    DISK_LOG="${OUTPUT_DIR}/logs/10_disk_space.log"
+    NETWORK_LOG="${OUTPUT_DIR}/logs/11_network.log"
+    SECURITY_LOG="${OUTPUT_DIR}/logs/12_security.log"
+    DEPS_LOG="${OUTPUT_DIR}/logs/13_dependencies.log"
+    CONFLICTS_LOG="${OUTPUT_DIR}/logs/14_conflicts.log"
+    PERFORMANCE_LOG="${OUTPUT_DIR}/logs/15_performance.log"
+    ERROR_LOG="${OUTPUT_DIR}/logs/errors.log"
+
+    # Analysis files
+    ANALYSIS_REPORT="${OUTPUT_DIR}/analysis/analysis_report.md"
+    STATISTICS_JSON="${OUTPUT_DIR}/analysis/statistics.json"
+    TRENDS_MD="${OUTPUT_DIR}/analysis/trends.md"
+    SUMMARY_TXT="${OUTPUT_DIR}/summary.txt"
+    INDEX_HTML="${OUTPUT_DIR}/index.html"
+    
+    return 0
+}
+
+# Archive management
+archive_old_logs() {
+    local archive_dir="${HISTORY_DIR}/archives"
+    local active_dir="${HISTORY_DIR}/active_checks"
+    
+    # Check directory permissions before proceeding
+    test_write_access "$archive_dir" || return 1
+    test_write_access "$active_dir" || return 1
+    
+    # Move old logs to archive
+    find "$active_dir" -maxdepth 1 -name "${NAME_PREFIX}_*" -type d -mtime "+${KEEP_DAYS}" -exec mv {} "$archive_dir/" \; 2>/dev/null
+    
+    # Compress archived logs
+    cd "$archive_dir" || return 1
+    for dir in ${NAME_PREFIX}_*; do
+        if [ -d "$dir" ] && [ ! -f "$dir.tar.gz" ]; then
+            if tar czf "$dir.tar.gz" "$dir" 2>/dev/null; then
+                rm -rf "$dir"
+            else
+                echo "$(get_message "ARCHIVE_ERROR"): $dir" >&2
+            fi
+        fi
+    done
+}
+
 # Help message translations
 show_help() {
     if [ "$(get_current_lang)" = "zh" ]; then
@@ -64,48 +188,6 @@ Options:
   -h, --help           Show this help message
 EOF
     fi
-}
-
-# Initialize configuration
-init_config() {
-    # Get project root directory
-    PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-    
-    # Set history directory in project root
-    HISTORY_DIR="${PROJECT_ROOT}/.env_check_history"
-    
-    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-    OUTPUT_DIR="${HISTORY_DIR}/active_checks/${NAME_PREFIX}_${TIMESTAMP}${NAME_SUFFIX:+_$NAME_SUFFIX}"
-    
-    # Define directory structure
-    mkdir -p "${OUTPUT_DIR}/logs"
-    mkdir -p "${OUTPUT_DIR}/analysis"
-    mkdir -p "${HISTORY_DIR}/archives"
-    
-    # Define log files
-    SYSTEM_LOG="${OUTPUT_DIR}/logs/01_system_info.log"
-    SHELL_LOG="${OUTPUT_DIR}/logs/02_shell_env.log"
-    PATH_LOG="${OUTPUT_DIR}/logs/03_path_config.log"
-    HOMEBREW_LOG="${OUTPUT_DIR}/logs/04_homebrew.log"
-    TOOLS_LOG="${OUTPUT_DIR}/logs/05_dev_tools.log"
-    PYTHON_LOG="${OUTPUT_DIR}/logs/06_python_env.log"
-    NODE_LOG="${OUTPUT_DIR}/logs/07_node_env.log"
-    EDITOR_LOG="${OUTPUT_DIR}/logs/08_editor_config.log"
-    GIT_LOG="${OUTPUT_DIR}/logs/09_git_config.log"
-    DISK_LOG="${OUTPUT_DIR}/logs/10_disk_space.log"
-    NETWORK_LOG="${OUTPUT_DIR}/logs/11_network.log"
-    SECURITY_LOG="${OUTPUT_DIR}/logs/12_security.log"
-    DEPS_LOG="${OUTPUT_DIR}/logs/13_dependencies.log"
-    CONFLICTS_LOG="${OUTPUT_DIR}/logs/14_conflicts.log"
-    PERFORMANCE_LOG="${OUTPUT_DIR}/logs/15_performance.log"
-    ERROR_LOG="${OUTPUT_DIR}/logs/errors.log"
-
-    # Analysis files
-    ANALYSIS_REPORT="${OUTPUT_DIR}/analysis/analysis_report.md"
-    STATISTICS_JSON="${OUTPUT_DIR}/analysis/statistics.json"
-    TRENDS_MD="${OUTPUT_DIR}/analysis/trends.md"
-    SUMMARY_TXT="${OUTPUT_DIR}/summary.txt"
-    INDEX_HTML="${OUTPUT_DIR}/index.html"
 }
 
 # Parse command line arguments
@@ -142,22 +224,6 @@ parse_arguments() {
                 exit 1
                 ;;
         esac
-    done
-}
-
-# Archive management
-archive_old_logs() {
-    local archive_dir="${HISTORY_DIR}/archives"
-    local active_dir="${HISTORY_DIR}/active_checks"
-    
-    find "$active_dir" -maxdepth 1 -name "${NAME_PREFIX}_*" -type d -mtime "+${KEEP_DAYS}" -exec mv {} "$archive_dir/" \;
-    
-    cd "$archive_dir" || return
-    for dir in ${NAME_PREFIX}_*; do
-        if [ -d "$dir" ] && [ ! -f "$dir.tar.gz" ]; then
-            tar czf "$dir.tar.gz" "$dir"
-            rm -rf "$dir"
-        fi
     done
 }
 
