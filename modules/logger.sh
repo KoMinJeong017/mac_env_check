@@ -138,18 +138,44 @@ reset_progress() {
 
 # Show completion status
 show_completion() {
-    local total_errors=$(grep -c "ERROR" "$ERROR_LOG" 2>/dev/null || echo "0")
-    local total_warnings=$(find "${OUTPUT_DIR}/logs" -type f -exec grep -l "WARNING\|✗" {} \; | wc -l)
+    # 确保初始值为整数
+    local total_errors=0
+    local total_warnings=0
     
+    # 统计错误数量并确保是整数
+    if [ -f "$ERROR_LOG" ]; then
+        total_errors=$(grep -c "ERROR" "$ERROR_LOG" 2>/dev/null | tr -d '[:space:]' || echo "0")
+    fi
+    
+    # 统计警告数量并确保是整数
+    if [ -d "${OUTPUT_DIR}/logs" ]; then
+        total_warnings=$(find "${OUTPUT_DIR}/logs" -type f -exec grep -l "WARNING\|✗" {} \; 2>/dev/null | wc -l | tr -d '[:space:]' || echo "0")
+    fi
+    
+    # 清理可能的非数字字符
+    total_errors=$(echo "$total_errors" | tr -cd '0-9')
+    total_warnings=$(echo "$total_warnings" | tr -cd '0-9')
+    
+    # 确保值为整数（如果为空则设为0）
+    : "${total_errors:=0}"
+    : "${total_warnings:=0}"
+    
+    # 显示完成状态
     printf "\n%s\n" "$(get_message "CHECK_COMPLETION")"
     printf "${GREEN}✓ $(get_message "COMPLETED_CHECKS") ${TOTAL_CHECKS}${NC}\n"
-    if [ $total_errors -gt 0 ]; then
-        printf "${RED}✗ $(get_message "FOUND_ERRORS") %d${NC}\n" "$total_errors"
+    
+    # 使用(()) 进行数值比较
+    if ((total_errors > 0)); then
+        printf "${RED}✗ $(get_message "FOUND_ERRORS") %d${NC}\n" "${total_errors}"
     fi
-    if [ $total_warnings -gt 0 ]; then
-        printf "${YELLOW}! $(get_message "FOUND_WARNINGS") %d${NC}\n" "$total_warnings"
+    
+    if ((total_warnings > 0)); then
+        printf "${YELLOW}! $(get_message "FOUND_WARNINGS") %d${NC}\n" "${total_warnings}"
     fi
-    if [ $total_errors -eq 0 ] && [ $total_warnings -eq 0 ]; then
+    
+    if ((total_errors == 0 && total_warnings == 0)); then
         printf "${GREEN}✓ $(get_message "NO_ISSUES")${NC}\n"
     fi
+    
+    printf "\n"
 }
