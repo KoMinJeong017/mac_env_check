@@ -1,0 +1,26 @@
+# Generated log directories
+mac_env_check_*/
+env_check_*/
+*_env_check_*/
+
+# Analysis history
+.env_check_history/
+
+# Temp files
+*.log
+*.tmp
+.DS_Store
+
+# Keep these files
+!*.sh
+!README.md
+!README_CN.md
+!LICENSE
+!.gitignore
+
+# Editor directories and files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
