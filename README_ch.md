@@ -91,19 +91,6 @@
 - 组件状态概览
 - 性能指标追踪
 
-### 语言设置
-
-工具支持多语言输出，可以通过以下命令切换语言：
-
-```bash
-# 切换到中文输出
-~/Scripts/env_check/modules/language.sh
-source ~/Scripts/env_check/modules/language.sh
-set_language zh
-
-# 切换到英文输出
-source ~/Scripts/env_check/modules/language.sh
-set_language en
 
 ## 安装说明
 
