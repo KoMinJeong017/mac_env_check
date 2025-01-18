@@ -19,8 +19,6 @@
 #########################################################################
 #!/bin/bash
 
-#!/bin/bash
-
 # Import language module
 source "${SCRIPT_DIR}/modules/language.sh"
 

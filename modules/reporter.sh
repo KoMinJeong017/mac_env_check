@@ -17,7 +17,6 @@
 # mail:         kominjeong017@gmail.com
 # Created Time: Fri 17 Jan 14:40:06 2025
 #########################################################################
-
 #!/bin/bash
 
 # Import language module
